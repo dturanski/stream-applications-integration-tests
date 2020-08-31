@@ -1,40 +1,46 @@
+/*
+ * Copyright 2020-2020 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.springframework.cloud.stream.apps.integration.test;
 
-import com.samskivert.mustache.Mustache;
-import com.samskivert.mustache.Template;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Duration;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.Callable;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
-import java.util.regex.Pattern;
-import org.slf4j.Logger;
+
+import com.samskivert.mustache.Mustache;
+import com.samskivert.mustache.Template;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
-import org.springframework.core.task.TaskExecutor;
-import org.springframework.util.SocketUtils;
-import org.testcontainers.containers.output.OutputFrame;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.util.SocketUtils;
+
 @Testcontainers
-public class AbstractStreamApplicationTests {
+public abstract class AbstractStreamApplicationTests {
 
 	protected final static String STREAM_APPS_VERSION = "3.0.0-SNAPSHOT";
+
 	public static final String STREAM_APPS_VERSION_KEY = "stream.apps.version";
 
 	protected static Path tempDir;
@@ -46,13 +52,14 @@ public class AbstractStreamApplicationTests {
 	protected static File resourceAsFile(String path) {
 		try {
 			return new ClassPathResource(path).getFile();
-		} catch (IOException e) {
+		}
+		catch (IOException e) {
 			throw new IllegalStateException("Unable to access resource " + path);
 		}
 	}
 
-	//Junit TempDir does not work with DockerComposeContainer unless you mount it.
-	//Also doesn't work as @BeforeAll in this case.
+	// Junit TempDir does not work with DockerComposeContainer unless you mount it.
+	// Also doesn't work as @BeforeAll in this case.
 	static void initializeTempDir() throws IOException {
 		Path tempRoot = Paths.get(new ClassPathResource("/").getFile().getAbsolutePath());
 		if (tempDir == null) {
@@ -77,7 +84,8 @@ public class AbstractStreamApplicationTests {
 				temporaryFile.toFile().deleteOnExit();
 				return temporaryFile.toFile();
 			}
-		} catch (IOException e) {
+		}
+		catch (IOException e) {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
 	}
@@ -91,15 +99,14 @@ public class AbstractStreamApplicationTests {
 		return enriched;
 	}
 
-	private static class AppLog extends Slf4jLogConsumer {
-		public AppLog(String appName) {
-			super(LoggerFactory.getLogger(appName));
-		}
-	}
-
 	protected static AppLog appLog(String appName) {
 		return new AppLog(appName);
 	}
 
+	private static class AppLog extends Slf4jLogConsumer {
+		AppLog(String appName) {
+			super(LoggerFactory.getLogger(appName));
+		}
+	}
 
 }

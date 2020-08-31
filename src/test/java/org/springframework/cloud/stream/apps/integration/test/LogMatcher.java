@@ -1,32 +1,35 @@
+/*
+ * Copyright 2020-2020 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.springframework.cloud.stream.apps.integration.test;
 
-import java.time.Duration;
-import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
-import org.springframework.core.task.TaskExecutor;
 import org.testcontainers.containers.output.OutputFrame;
 
 public class LogMatcher implements Consumer<OutputFrame> {
 	private static Logger logger = LoggerFactory.getLogger(LogMatcher.class);
-	private Duration timeout = Duration.ofMinutes(5);
+
 	private List<Consumer<String>> listeners = new LinkedList<>();
-	private TaskExecutor executor = new SimpleAsyncTaskExecutor();
-
-	public LogMatcher(Duration timeout) {
-		this.timeout = timeout;
-	}
-
-	public LogMatcher() {
-	}
 
 	public static String contains(String string) {
 		return ".*" + string + ".*";
@@ -41,37 +44,15 @@ public class LogMatcher implements Consumer<OutputFrame> {
 		listeners.forEach(m -> m.accept(outputFrame.getUtf8String()));
 	}
 
-	public boolean waitFor(String regex) {
+	public LogListener withRegex(String regex) {
 		LogListener logListener = new LogListener(regex);
 		listeners.add(logListener);
-		Callable callable = (Callable) () -> {
-			Date start = new Date();
-			while (!logListener.matched()) {
-				try {
-					Thread.sleep(10);
-				} catch (InterruptedException e) {
-					Thread.interrupted();
-				}
-				if (Duration.ofMillis(new Date().getTime() - start.getTime()).compareTo(timeout) >= 0) {
-					return false;
-				}
-			}
-			return true;
-		};
-
-		boolean matched;
-		try {
-			FutureTask<Boolean> futureTask = new FutureTask<>(callable);
-			executor.execute(futureTask);
-			matched = futureTask.get();
-		} catch (Exception e) {
-			throw new IllegalStateException(e.getMessage(), e);
-		}
-		return matched;
+		return logListener;
 	}
 
-	class LogListener implements Consumer<String> {
+	public class LogListener implements Consumer<String> {
 		private AtomicBoolean matched = new AtomicBoolean();
+
 		private final Pattern pattern;
 
 		LogListener(String regex) {
@@ -87,8 +68,8 @@ public class LogMatcher implements Consumer<OutputFrame> {
 			}
 		}
 
-		boolean matched() {
-			return matched.get();
+		public AtomicBoolean matches() {
+			return matched;
 		}
 	}
 }
