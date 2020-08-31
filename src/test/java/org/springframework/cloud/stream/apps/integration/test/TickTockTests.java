@@ -34,7 +34,7 @@ public class TickTockTests extends AbstractStreamApplicationTests {
 	@Container
 	private final DockerComposeContainer environment = new DockerComposeContainer(
 			kafka(),
-			resolveTemplate("compose-time-log.yml", Collections.EMPTY_MAP));
+			resolveTemplate("tick-tock-tests.yml", Collections.EMPTY_MAP));
 
 	@Test
 	void ticktock() {

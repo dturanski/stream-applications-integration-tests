@@ -78,7 +78,7 @@ public abstract class AbstractStreamApplicationTests {
 			try (InputStreamReader resourcesTemplateReader = new InputStreamReader(
 					Objects.requireNonNull(new ClassPathResource(templatePath).getInputStream()))) {
 				Template resourceTemplate = Mustache.compiler().escapeHTML(false).compile(resourcesTemplateReader);
-				Path temporaryFile = Files.createFile(tempDir.resolve(templatePath));
+				Path temporaryFile = Files.createFile(tempDir.resolve(Paths.get(templatePath).getFileName()));
 				Files.write(temporaryFile,
 						resourceTemplate.execute(addGlobalProperties(templateProperties)).getBytes()).toFile();
 				temporaryFile.toFile().deleteOnExit();
