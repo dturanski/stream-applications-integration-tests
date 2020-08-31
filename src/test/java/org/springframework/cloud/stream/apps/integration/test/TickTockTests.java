@@ -1,6 +1,7 @@
 package org.springframework.cloud.stream.apps.integration.test;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.DockerComposeContainer;
@@ -11,18 +12,18 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 
 public class TickTockTests extends AbstractStreamApplicationTests {
 	//"MM/dd/yy HH:mm:ss";
-	private final Pattern pattern = Pattern.compile(".*\\d{2}/\\d{2}/\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}\\n");
+	private final Pattern pattern = Pattern.compile(".*\\d{2}/\\d{2}/\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}");
 
 	@Container
 	private final DockerComposeContainer environment =
 			new DockerComposeContainer(
 					kafka(),
-					resourceAsFile("compose-time-log.yml")
+					resolveTemplate("compose-time-log.yml", Collections.EMPTY_MAP)
 			);
 
 	@Test
 	void ticktock() {
-		assertThatCode(()-> environment.waitingFor("log-sink", Wait.forLogMessage(pattern.pattern(), 5)
+		assertThatCode(() -> environment.waitingFor("log-sink", Wait.forLogMessage(pattern.pattern(), 5)
 				.withStartupTimeout(Duration.ofMinutes(2)))).doesNotThrowAnyException();
 	}
 }

@@ -1,14 +1,14 @@
 version: '2'
 services:
   time-source:
-    image: springcloudstream/time-source-kafka:3.0.0-SNAPSHOT
+    image: springcloudstream/time-source-kafka:{{stream.apps.version}}
     depends_on:
       - kafka-broker
     environment:
       - SPRING_CLOUD_STREAM_BINDINGS_OUTPUT_DESTINATION=log
       - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka-broker
   log-sink:
-    image: springcloudstream/log-sink-kafka:3.0.0-SNAPSHOT
+    image: springcloudstream/log-sink-kafka:{{stream.apps.version}}
     depends_on:
       - kafka-broker
     environment:

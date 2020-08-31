@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -33,13 +34,16 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 public class AbstractStreamApplicationTests {
 
+	protected final static String STREAM_APPS_VERSION = "3.0.0-SNAPSHOT";
+	public static final String STREAM_APPS_VERSION_KEY = "stream.apps.version";
+
 	protected static Path tempDir;
 
-	protected static final File kafka() {
+	protected static File kafka() {
 		return resourceAsFile("compose-kafka.yml");
 	}
 
-	protected static final File resourceAsFile(String path) {
+	protected static File resourceAsFile(String path) {
 		try {
 			return new ClassPathResource(path).getFile();
 		} catch (IOException e) {
@@ -47,7 +51,7 @@ public class AbstractStreamApplicationTests {
 		}
 	}
 
-	//Junit TempDir does not work with TestContainers unless you mount it.
+	//Junit TempDir does not work with DockerComposeContainer unless you mount it.
 	//Also doesn't work as @BeforeAll in this case.
 	static void initializeTempDir() throws IOException {
 		Path tempRoot = Paths.get(new ClassPathResource("/").getFile().getAbsolutePath());
@@ -69,13 +73,22 @@ public class AbstractStreamApplicationTests {
 				Template resourceTemplate = Mustache.compiler().escapeHTML(false).compile(resourcesTemplateReader);
 				Path temporaryFile = Files.createFile(tempDir.resolve(templatePath));
 				Files.write(temporaryFile,
-						resourceTemplate.execute(templateProperties).getBytes()).toFile();
+						resourceTemplate.execute(addGlobalProperties(templateProperties)).getBytes()).toFile();
 				temporaryFile.toFile().deleteOnExit();
 				return temporaryFile.toFile();
 			}
 		} catch (IOException e) {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
+	}
+
+	private static Map<String, Object> addGlobalProperties(Map<String, Object> templateProperties) {
+		if (templateProperties.containsKey(STREAM_APPS_VERSION)) {
+			return templateProperties;
+		}
+		Map<String, Object> enriched = new HashMap<>(templateProperties);
+		enriched.put(STREAM_APPS_VERSION_KEY, STREAM_APPS_VERSION);
+		return enriched;
 	}
 
 	private static class AppLog extends Slf4jLogConsumer {
@@ -88,70 +101,5 @@ public class AbstractStreamApplicationTests {
 		return new AppLog(appName);
 	}
 
-	protected static class LogMatcher implements Consumer<OutputFrame> {
-		private static Logger logger = LoggerFactory.getLogger(LogMatcher.class);
-		private Duration timeout = Duration.ofMinutes(5);
-		private List<Consumer<String>> listeners = new LinkedList<>();
-		private TaskExecutor executor = new SimpleAsyncTaskExecutor();
 
-		protected LogMatcher(Duration timeout) {
-			this.timeout = timeout;
-		}
-
-		protected LogMatcher() {
-		}
-
-		@Override
-		public void accept(OutputFrame outputFrame) {
-			listeners.forEach(m -> m.accept(outputFrame.getUtf8String()));
-		}
-
-		protected boolean waitFor(String regex) {
-			LogListener logListener = new LogListener(regex);
-			listeners.add(logListener);
-			Callable<Boolean> callable = (Callable) () -> {
-				Date start = new Date();
-				while (!logListener.matched()) {
-					try {
-						Thread.sleep(10);
-					} catch (InterruptedException e) {
-						Thread.interrupted();
-					}
-					if (Duration.ofMillis(new Date().getTime() - start.getTime()).compareTo(timeout) >= 0) {
-						return false;
-					}
-				}
-				return true;
-			};
-
-			boolean matched;
-			try {
-				FutureTask<Boolean> futureTask = new FutureTask<>(callable);
-				executor.execute(futureTask);
-				matched = futureTask.get();
-			} catch (Exception e) {
-				throw new IllegalStateException(e.getMessage(), e);
-			}
-			return matched;
-		}
-
-		class LogListener implements Consumer<String> {
-			private AtomicBoolean matched = new AtomicBoolean();
-			private final Pattern pattern;
-
-			LogListener(String regex) {
-				pattern = Pattern.compile(regex);
-			}
-			@Override
-			public void accept(String s) {
-				if (pattern.matcher(s).matches()) {
-					logger.debug(this + " MATCHED " + s);
-					matched.set(true);
-				}
-			}
-			boolean matched() {
-				return matched.get();
-			}
-		}
-	}
 }
