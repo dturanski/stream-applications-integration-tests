@@ -19,6 +19,8 @@ package org.springframework.cloud.stream.apps.integration.test;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -35,6 +37,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.util.SocketUtils;
+import org.springframework.web.reactive.function.client.WebClient;
 
 @Testcontainers
 public abstract class AbstractStreamApplicationTests {
@@ -56,6 +59,21 @@ public abstract class AbstractStreamApplicationTests {
 		catch (IOException e) {
 			throw new IllegalStateException("Unable to access resource " + path);
 		}
+	}
+
+	protected static String localHostAddress() {
+		try {
+			return InetAddress.getLocalHost().getHostAddress();
+		}
+		catch (UnknownHostException e) {
+			throw new IllegalStateException(e.getMessage(), e);
+		}
+	}
+
+	private static WebClient webClient = WebClient.builder().build();
+
+	protected static WebClient webClient() {
+		return webClient;
 	}
 
 	// Junit TempDir does not work with DockerComposeContainer unless you mount it.

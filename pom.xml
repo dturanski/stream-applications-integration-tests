@@ -26,14 +26,16 @@
 		<maven-checkstyle-plugin.failOnViolation>true</maven-checkstyle-plugin.failOnViolation>
 		<maven-checkstyle-plugin.includeTestSourceDirectory>true</maven-checkstyle-plugin.includeTestSourceDirectory>
 		<puppycrawl-tools-checkstyle.version>8.29</puppycrawl-tools-checkstyle.version>
-		<checkstyle.location>https://raw.githubusercontent.com/spring-cloud/stream-applications/master/etc/checkstyle</checkstyle.location>
+		<checkstyle.location>https://raw.githubusercontent.com/spring-cloud/stream-applications/master/etc/checkstyle
+		</checkstyle.location>
 		<checkstyle.suppressions.file>
 			${checkstyle.location}/checkstyle-suppressions.xml
 		</checkstyle.suppressions.file>
 		<checkstyle.nohttp.file>
 			${checkstyle.location}/nohttp-checkstyle.xml
 		</checkstyle.nohttp.file>
-		<checkstyle.additional.suppressions.file>${checkstyle.location}/checkstyle-suppressions.xml</checkstyle.additional.suppressions.file>
+		<checkstyle.additional.suppressions.file>${checkstyle.location}/checkstyle-suppressions.xml
+		</checkstyle.additional.suppressions.file>
 		<nohttp-checkstyle.version>0.0.2.RELEASE</nohttp-checkstyle.version>
 		<disable.nohttp.checks>true</disable.nohttp.checks>
 		<spring-javaformat-checkstyle.version>0.0.7</spring-javaformat-checkstyle.version>
@@ -64,6 +66,15 @@
 			<groupId>org.testcontainers</groupId>
 			<artifactId>mariadb</artifactId>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>mongodb</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-mongodb</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.mariadb.jdbc</groupId>

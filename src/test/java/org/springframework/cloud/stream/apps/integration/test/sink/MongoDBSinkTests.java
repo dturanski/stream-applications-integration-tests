@@ -17,64 +17,58 @@
 package org.springframework.cloud.stream.apps.integration.test.sink;
 
 import java.time.Duration;
+import java.util.List;
 
-import com.zaxxer.hikari.HikariDataSource;
+import org.bson.Document;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.DockerComposeContainer;
-import org.testcontainers.containers.MariaDBContainer;
+import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
 import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.stream.apps.integration.test.AbstractStreamApplicationTests;
 import org.springframework.cloud.stream.apps.integration.test.FluentMap;
+import org.springframework.data.mongodb.MongoDatabaseFactory;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.SimpleMongoClientDatabaseFactory;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.reactive.function.client.ClientResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
 
-public class JdbcSinkTests extends AbstractStreamApplicationTests {
+public class MongoDBSinkTests extends AbstractStreamApplicationTests {
 
 	private static int port = findAvailablePort();
 
-	private static JdbcTemplate jdbcTemplate;
+	private static MongoTemplate mongoTemplate;
 
 	@Container
-	private static MariaDBContainer mariadbContainer = (MariaDBContainer) new MariaDBContainer()
-			.withDatabaseName("test")
-			.withPassword("password")
-			.withUsername("user")
-			.withInitScript("init.sql")
-			.withExposedPorts(3306)
-			.waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofMinutes(2)));
+	private static MongoDBContainer mongoDBContainer = new MongoDBContainer()
+			.withExposedPorts(27017)
+			.withStartupTimeout(Duration.ofMinutes(2));
+
+	private static String mongoConnectionString() {
+		return String.format("mongodb://%s:%s/%s", localHostAddress(), mongoDBContainer.getMappedPort(27017), "test");
+	}
+
+	@BeforeAll
+	private static void buildMongoTemplate() {
+		MongoDatabaseFactory mongoDatabaseFactory = new SimpleMongoClientDatabaseFactory(
+				mongoConnectionString());
+		mongoTemplate = new MongoTemplate(mongoDatabaseFactory);
+	}
 
 	@Container
 	private DockerComposeContainer environment = new DockerComposeContainer(
 			kafka(),
-			resolveTemplate("sink/jdbc-sink-tests.yml", new FluentMap<String, Object>()
-					.withEntry("jdbc.url",
-							mariadbContainer.getJdbcUrl().replace("localhost",
-									localHostAddress()))
-					.withEntry("user", mariadbContainer.getUsername())
-					.withEntry("password", mariadbContainer.getPassword())
+			resolveTemplate("sink/mongodb-sink-tests.yml", new FluentMap<String, Object>()
+					.withEntry("mongodb.url", mongoConnectionString())
 					.withEntry("port", port)))
 							.withLogConsumer("jdbc-sink", appLog("jdbc-sink"))
 							.withExposedService("http-source", port,
 									Wait.forListeningPort().withStartupTimeout(Duration.ofMinutes(2)));
-
-	@BeforeAll
-	static void buildJdbcTemplate() {
-		HikariDataSource dataSource = new HikariDataSource();
-		dataSource.setDriverClassName(mariadbContainer.getDriverClassName());
-		dataSource.setUsername(mariadbContainer.getUsername());
-		dataSource.setPassword(mariadbContainer.getPassword());
-		dataSource.setJdbcUrl(mariadbContainer.getJdbcUrl());
-		jdbcTemplate = new JdbcTemplate(dataSource);
-		jdbcTemplate.execute("DELETE FROM People");
-	}
 
 	@Test
 	void postData() {
@@ -87,11 +81,7 @@ public class JdbcSinkTests extends AbstractStreamApplicationTests {
 				.exchange()
 				.block();
 		assertThat(response.statusCode().is2xxSuccessful()).isTrue();
-
-		await().atMost(Duration.ofSeconds(30))
-				.untilAsserted(
-						() -> assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) from People", Integer.class))
-								.isOne());
-		assertThat(jdbcTemplate.queryForObject("SELECT name from People", String.class)).isEqualTo("My Name");
+		List<Document> docs = mongoTemplate.findAll(Document.class, "test");
+		assertThat(docs).allMatch(document -> document.get("name", String.class).equals("My Name"));
 	}
 }
