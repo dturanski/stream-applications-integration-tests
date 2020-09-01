@@ -79,7 +79,7 @@ public class MongoDBSinkTests extends AbstractStreamApplicationTests {
 				.contentType(MediaType.APPLICATION_JSON)
 				.body(Mono.just(json), String.class)
 				.exchange()
-				.block();
+				.block(Duration.ofSeconds(30));
 		assertThat(response.statusCode().is2xxSuccessful()).isTrue();
 		List<Document> docs = mongoTemplate.findAll(Document.class, "test");
 		assertThat(docs).allMatch(document -> document.get("name", String.class).equals("My Name"));

@@ -29,14 +29,12 @@ import org.springframework.cloud.stream.apps.integration.test.AbstractStreamAppl
 import org.springframework.cloud.stream.apps.integration.test.LogMatcher;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ClientResponse;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.springframework.cloud.stream.apps.integration.test.LogMatcher.endsWith;
 
 public class HttpSourceTests extends AbstractStreamApplicationTests {
-	private static WebClient webClient = WebClient.builder().build();
 
 	private static int port = findAvailablePort();
 
@@ -53,7 +51,7 @@ public class HttpSourceTests extends AbstractStreamApplicationTests {
 
 	@Test
 	void plaintext() {
-		ClientResponse response = webClient
+		ClientResponse response = webClient()
 				.post()
 				.uri("http://localhost:" + port)
 				.contentType(MediaType.TEXT_PLAIN)
@@ -68,7 +66,7 @@ public class HttpSourceTests extends AbstractStreamApplicationTests {
 
 	@Test
 	void json() {
-		ClientResponse response = webClient
+		ClientResponse response = webClient()
 				.post()
 				.uri("http://localhost:" + port)
 				.contentType(MediaType.APPLICATION_JSON)
