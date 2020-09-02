@@ -32,6 +32,7 @@ import org.springframework.web.reactive.function.client.ClientResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.springframework.cloud.stream.apps.integration.test.AbstractStreamApplicationTests.AppLog.appLog;
 import static org.springframework.cloud.stream.apps.integration.test.LogMatcher.endsWith;
 
 public class HttpSourceTests extends AbstractStreamApplicationTests {

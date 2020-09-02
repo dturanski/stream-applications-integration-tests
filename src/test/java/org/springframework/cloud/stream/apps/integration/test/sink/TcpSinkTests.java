@@ -14,15 +14,17 @@
  * limitations under the License.
  */
 
-package org.springframework.cloud.stream.apps.integration.test.processor;
+package org.springframework.cloud.stream.apps.integration.test.sink;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import okhttp3.mockwebserver.Dispatcher;
-import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServer;
-import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.DockerComposeContainer;
@@ -31,9 +33,6 @@ import org.testcontainers.junit.jupiter.Container;
 import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.stream.apps.integration.test.AbstractStreamApplicationTests;
-import org.springframework.cloud.stream.apps.integration.test.LogMatcher;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ClientResponse;
 
@@ -42,53 +41,53 @@ import static org.awaitility.Awaitility.await;
 import static org.springframework.cloud.stream.apps.integration.test.AbstractStreamApplicationTests.AppLog.appLog;
 import static org.springframework.cloud.stream.apps.integration.test.FluentMap.fluentMap;
 
-public class HttpRequestProcessorTests extends AbstractStreamApplicationTests {
-	private static MockWebServer server = new MockWebServer();
+public class TcpSinkTests extends AbstractStreamApplicationTests {
 
-	private static int serverPort = findAvailablePort();
+	private static final int port = findAvailablePort();
 
-	private static String url = "http://" + localHostAddress() + ":" + serverPort;
+	private static final int tcpPort = findAvailablePort();
 
-	private static int sourcePort = findAvailablePort();
+	private static Socket socket;
 
-	private static LogMatcher logMatcher = new LogMatcher();
+	private static final AtomicBoolean socketReady = new AtomicBoolean();
 
 	@Container
 	private static final DockerComposeContainer environment = new DockerComposeContainer(
 			kafka(),
-			resolveTemplate("processor/http-request-processor-tests.yml", fluentMap()
-					.withEntry("port", sourcePort)
-					.withEntry("url", url)))
-							.withLogConsumer("log-sink", appLog("log-sink"))
-							.withLogConsumer("log-sink", logMatcher)
-							.withExposedService("http-source", sourcePort,
+			resolveTemplate("sink/tcp-sink-tests.yml", fluentMap()
+					.withEntry("port", port)
+					.withEntry("tcp.port", tcpPort)
+					.withEntry("tcp.host", localHostAddress())))
+							.withLogConsumer("tcp-sink", appLog("tcp-sink"))
+							.withExposedService("http-source", port,
 									Wait.forListeningPort().withStartupTimeout(Duration.ofMinutes(2)));
 
 	@BeforeAll
-	static void startServer() throws Exception {
-		server.start(InetAddress.getLocalHost(), serverPort);
+	static void startTcpServer() {
+		new Thread(() -> {
+			try {
+				socket = new ServerSocket(tcpPort, 50, InetAddress.getLocalHost()).accept();
+				socketReady.set(true);
+			}
+			catch (IOException exception) {
+				exception.printStackTrace();
+			}
+		}).start();
 	}
 
 	@Test
-	void get() {
-		server.setDispatcher(new Dispatcher() {
-			@Override
-			public MockResponse dispatch(RecordedRequest recordedRequest) {
-				return new MockResponse().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-						.setBody("{\"response\":\"" + recordedRequest.getBody().readUtf8() + "\"}")
-						.setResponseCode(HttpStatus.OK.value());
-			}
-		});
+	void postData() throws IOException {
+		String text = "Hello, world!";
 		ClientResponse response = webClient()
 				.post()
-				.uri("http://localhost:" + sourcePort)
+				.uri("http://localhost:" + port)
 				.contentType(MediaType.TEXT_PLAIN)
-				.body(Mono.just("ping"), String.class)
+				.body(Mono.just(text), String.class)
 				.exchange()
 				.block();
 		assertThat(response.statusCode().is2xxSuccessful()).isTrue();
-
-		await().atMost(Duration.ofSeconds(30))
-				.untilTrue(logMatcher.withRegex(".*\\{\"response\":\"ping\"\\}").matches());
+		await().atMost(Duration.ofSeconds(10)).untilTrue(socketReady);
+		BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+		await().atMost(Duration.ofSeconds(10)).until(() -> reader.readLine().equals("Hello, world!"));
 	}
 }

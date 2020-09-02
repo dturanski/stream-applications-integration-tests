@@ -37,10 +37,11 @@ public class JdbcSourceTests extends AbstractStreamApplicationTests {
 	@Container
 	private static final DockerComposeContainer environment = new DockerComposeContainer(
 			kafka(),
-			resolveTemplate("source/jdbc-source-tests.yml", Collections.singletonMap("init.sql", resourceAsFile("init.sql"))))
-					.withLogConsumer("log-sink", logMatcher)
-					.waitingFor("jdbc-source", Wait.forLogMessage(contains("Started JdbcSource"), 1)
-							.withStartupTimeout(Duration.ofMinutes(2)));
+			resolveTemplate("source/jdbc-source-tests.yml",
+					Collections.singletonMap("init.sql", resourceAsFile("init.sql"))))
+							.withLogConsumer("log-sink", logMatcher)
+							.waitingFor("jdbc-source", Wait.forLogMessage(contains("Started JdbcSource"), 1)
+									.withStartupTimeout(Duration.ofMinutes(2)));
 
 	@Test
 	void test() {

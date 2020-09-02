@@ -117,11 +117,11 @@ public abstract class AbstractStreamApplicationTests {
 		return enriched;
 	}
 
-	protected static AppLog appLog(String appName) {
-		return new AppLog(appName);
-	}
+	public static class AppLog extends Slf4jLogConsumer {
+		public static AppLog appLog(String appName) {
+			return new AppLog(appName);
+		}
 
-	private static class AppLog extends Slf4jLogConsumer {
 		AppLog(String appName) {
 			super(LoggerFactory.getLogger(appName));
 		}
