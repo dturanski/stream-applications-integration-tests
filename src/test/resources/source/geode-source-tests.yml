@@ -6,7 +6,7 @@ services:
     depends_on:
       - kafka-broker
     environment:
-      - GEODE_POOL_CONNECT_TYPE=locator
+      - GEODE_POOL_CONNECT_TYPE=server
       - GEODE_REGION_REGION_NAME={{geode.region}}
       - GEODE_POOL_HOST_ADDRESSES={{geode.host-addresses}}
       - SPRING_CLOUD_STREAM_BINDINGS_OUTPUT_DESTINATION=log

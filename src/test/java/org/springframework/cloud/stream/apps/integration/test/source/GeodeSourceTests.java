@@ -24,6 +24,10 @@ import com.github.dockerjava.api.model.ExposedPort;
 import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.PortBinding;
 import com.github.dockerjava.api.model.Ports;
+import org.apache.geode.cache.Region;
+import org.apache.geode.cache.client.ClientCache;
+import org.apache.geode.cache.client.ClientCacheFactory;
+import org.apache.geode.cache.client.ClientRegionShortcut;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.DockerComposeContainer;
@@ -48,6 +52,8 @@ public class GeodeSourceTests extends AbstractStreamApplicationTests {
 
 	private static int cacheServerPort = findAvailablePort();
 
+	private static Region<Object, Object> clientRegion;
+
 	@Container
 	private static GeodeContainer geode = (GeodeContainer) new GeodeContainer(new ImageFromDockerfile()
 			.withFileFromClasspath("Dockerfile", "geode/Dockerfile")
@@ -66,19 +72,25 @@ public class GeodeSourceTests extends AbstractStreamApplicationTests {
 
 	@BeforeAll
 	static void init() {
-		geode.execGfsh("start locator --name=Locator1 " + "--hostname-for-clients=geode"
-				+ " --port=" + locatorPort);
-		geode.execGfsh("connect --locator=geode[" + locatorPort + "]",
+		//Not using locator is faster.
+		System.out.println(geode.execGfsh(
 				"start server --name=Server1 " + "--hostname-for-clients=geode" + " --server-port="
-						+ cacheServerPort,
-				"create region --name=myRegion --type=REPLICATE");
+						+ cacheServerPort + " --J=-Dgemfire.jmx-manager=true --J=-Dgemfire.jmx-manager-start=true")
+				.getStdout());
+		System.out.println(geode.execGfsh("connect --jmx-manager=localhost[1099]",
+				"create region --name=myRegion --type=REPLICATE").getStdout());
+		ClientCache clientCache = new ClientCacheFactory().addPoolServer("localhost", cacheServerPort)
+				.create();
+		clientRegion = clientCache
+				.createClientRegionFactory(ClientRegionShortcut.PROXY)
+				.create("myRegion");
 	}
 
 	@Container
 	private DockerComposeContainer environment = new DockerComposeContainer(
 			kafka(),
 			resolveTemplate("source/geode-source-tests.yml", fluentMap()
-					.withEntry("geode.host-addresses", "geode:" + locatorPort)
+					.withEntry("geode.host-addresses", "geode:" + cacheServerPort)
 					.withEntry("extraHosts", "geode:" + localHostAddress())
 					.withEntry("geode.region", "myRegion")))
 							.withLogConsumer("log-sink", appLog("log-sink"))
@@ -91,7 +103,7 @@ public class GeodeSourceTests extends AbstractStreamApplicationTests {
 		LogMatcher.LogListener logListener = logMatcher.withRegex(LogMatcher.contains("world"));
 		await().atMost(Duration.ofMinutes(2))
 				.untilTrue(geodeLogMatcher.withRegex(LogMatcher.contains("Started GeodeSource")).matches());
-		geode.connectAndExecGfsh("put --key=hello --value=world --region=myRegion");
+		clientRegion.put("hello", "world");
 		await().atMost(Duration.ofSeconds(30))
 				.untilTrue(logListener.matches());
 	}
