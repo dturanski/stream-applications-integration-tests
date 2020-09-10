@@ -41,6 +41,7 @@
 		<disable.nohttp.checks>true</disable.nohttp.checks>
 		<spring-javaformat-checkstyle.version>0.0.7</spring-javaformat-checkstyle.version>
 		<wiremock.version>2.27.1</wiremock.version>
+		<aws.version>1.11.415</aws.version>
 	</properties>
 
 	<dependencies>
@@ -83,6 +84,12 @@
 		<dependency>
 			<groupId>org.springframework.data</groupId>
 			<artifactId>spring-data-geode</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.amazonaws</groupId>
+			<artifactId>aws-java-sdk-s3</artifactId>
+			<version>${aws.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>

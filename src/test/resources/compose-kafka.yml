@@ -1,4 +1,4 @@
-version: '2'
+version: '2.4'
 services:
   kafka-broker:
     image: confluentinc/cp-kafka:5.5.1
